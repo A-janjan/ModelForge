@@ -65,7 +65,7 @@ app/
 └── docker-compose.yml
 ```
 
-### Step 1: Define the MVP Contract First
+### Define the MVP Contract First
 
 request:
 ```

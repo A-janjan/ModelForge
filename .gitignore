@@ -1,0 +1,4 @@
+local_info.txt
+
+__pycache__/
+*.pyc
