@@ -1,22 +1,23 @@
-import joblib
-import numpy as np
+import joblib  # pyright: ignore[reportMissingImports]
+
+from app.repositories.model_repository import ModelRepository
 
 
 class ModelService:
-    MODEL_VERSION = "1.0.0"
+    def __init__(self):
+        model_repository = ModelRepository()
+        self.active_models: dict[str, int] = model_repository.get_active_models()
+        self.loaded_models: dict[str, object] = {}
+        for model_version in self.active_models:
+            self.load_model(model_version, f"app/models/iris_model_{model_version}.pkl")
 
-    def __init__(self) -> None:
-        self.model = joblib.load("app/models/iris_model.pkl")
+    def load_model(self, version: str, path: str):
+        self.loaded_models[version] = joblib.load(path)  # pyright: ignore[reportUnknownMemberType]
 
-    def predict(
-        self,
-        sepal_length: float,
-        sepal_width: float,
-        petal_length: float,
-        petal_width: float,
-    ) -> str:
-        features = np.array([[sepal_length, sepal_width, petal_length, petal_width]])
+    def unload_model(self, version: str):
+        del self.loaded_models[version]
 
-        prediction = self.model.predict(features)
-
-        return str(prediction[0])
+    def predict(self, version: str, features: list[float]) -> str:
+        model = self.loaded_models[version]
+        prediction = model.predict(features)  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType, reportAttributeAccessIssue]
+        return str(prediction)  # pyright: ignore[reportUnknownArgumentType]

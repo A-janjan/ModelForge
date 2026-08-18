@@ -1,10 +1,10 @@
 from fastapi import APIRouter
 
 from app.schemas.prediction import PredictionRequest, PredictionResponse
-from app.services.model_service import ModelService
+from app.services.inference_service import InferenceService
 
 router = APIRouter()
-model_service = ModelService()
+model_service = InferenceService()
 
 
 @router.get("/health")

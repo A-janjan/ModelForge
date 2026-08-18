@@ -84,3 +84,19 @@ response:
   "model_version": "1.0.0"
 }
 ```
+
+
+## First Database Design
+
+```sql
+CREATE TABLE models (
+  id SERIAL PRIMATY KEY,
+  name VARCHAR(255) NOT NULL,
+  version VARCHAR(50) NOT NULL,
+  artifact_path TEXT NOT NULL,
+  status VARCHAR(50) NOT NULL,
+  traffic_weight INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
