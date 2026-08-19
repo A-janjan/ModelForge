@@ -1,6 +1,6 @@
 import os
 
-import psycopg2
+import psycopg2  # pyright: ignore[reportMissingModuleSource]
 from dotenv import load_dotenv
 
 _ = load_dotenv()
@@ -28,7 +28,7 @@ class ModelRepository:
         artifact_path: str,
         status: str,
         traffic_weight: int,
-    ):
+    ) -> tuple[str, str, str, str, int] | None:
         cur = self.conn.cursor()
         cur.execute("""
                 CREATE TABLE IF NOT EXISTS models (
@@ -51,7 +51,7 @@ class ModelRepository:
         self.conn.commit()
         return row
 
-    def get_model_by_id(self, id: int) -> tuple[str, str, str, int] | None:
+    def get_model_by_id(self, id: int) -> tuple[str, str, str, str, int] | None:
         with self.conn.cursor() as cur:
             cur.execute(
                 """
@@ -61,7 +61,9 @@ class ModelRepository:
             )
             return cur.fetchone()
 
-    def get_model_by_version(self, version: str) -> tuple[str, str, str, int] | None:
+    def get_model_by_version(
+        self, version: str
+    ) -> tuple[str, str, str, str, int] | None:
         with self.conn.cursor() as cur:
             cur.execute(
                 """
@@ -71,7 +73,7 @@ class ModelRepository:
             )
             return cur.fetchone()
 
-    def list_models(self) -> list[tuple[str, str, str, int]]:
+    def list_models(self) -> list[tuple[str, str, str, str, int]]:
         # query all rows , sorted by creation time (id)
         with self.conn.cursor() as cur:
             cur.execute(
@@ -81,7 +83,7 @@ class ModelRepository:
             )
             return cur.fetchall()
 
-    def get_active_models(self) -> list[tuple[str, str, str, int]]:
+    def get_active_models(self) -> list[tuple[str, str, str, str, int]]:
         with self.conn.cursor() as cur:
             cur.execute(
                 """
