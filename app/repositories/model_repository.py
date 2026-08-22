@@ -5,6 +5,14 @@ from dotenv import load_dotenv
 
 _ = load_dotenv()
 
+VALID_STATUSES = {
+    "pending",
+    "active",
+    "inactive",
+    "archived",
+    "failed",
+}
+
 
 class ModelRepository:
     def __init__(self):
@@ -36,6 +44,14 @@ class ModelRepository:
                 )
             """)
         self.conn.commit()
+
+    def _validate_status(self, status: str) -> str:
+        status = status.lower()
+
+        if status not in VALID_STATUSES:
+            raise ValueError(f"Invalid status value: {status}")
+
+        return status
 
     def create_model(
         self,
@@ -109,6 +125,9 @@ class ModelRepository:
         Update status for a given version.
         Returns True if at least one row was updated, False otherwise.
         """
+
+        status = self._validate_status(status)
+
         with self.conn.cursor() as cur:
             cur.execute(
                 "UPDATE models SET status = %s WHERE version = %s",
@@ -117,12 +136,15 @@ class ModelRepository:
             updated = cur.rowcount > 0
             self.conn.commit()
             return updated
-        
+
     def update_status_by_id(self, model_id: int, status: str) -> bool:
         """
-            Update status for a given id.
-            Returns True if at least one row was updated, False otherwise.
+        Update status for a given id.
+        Returns True if at least one row was updated, False otherwise.
         """
+
+        status = self._validate_status(status)
+
         with self.conn.cursor() as cur:
             cur.execute(
                 "UPDATE models SET status = %s WHERE id = %s",

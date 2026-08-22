@@ -12,3 +12,16 @@ class ModelCreate(BaseModel):
 
 class UpdateWeightRequest(BaseModel):
     traffic_weight: int
+
+
+class ModelResponse(BaseModel):
+    id: int
+    name: str
+    version: str
+    artifact_path: str
+    status: str
+    traffic_weight: int
+
+
+class StatusUpdateResponse(BaseModel):
+    status: str  # e.g., "success"

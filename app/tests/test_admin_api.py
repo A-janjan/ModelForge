@@ -49,12 +49,12 @@ def test_create_model(client, default_payload):
         get_response = client.get(f"/admin/models/{model_id}")
         assert get_response.status_code == 200
         retrieved = get_response.json()
-        assert retrieved[0] == model_id
-        assert retrieved[1] == default_payload["name"]
-        assert retrieved[2] == default_payload["version"]
-        assert retrieved[3] == default_payload["artifact_path"]
-        assert retrieved[4] == default_payload["status"]
-        assert retrieved[5] == default_payload["traffic_weight"]
+        assert retrieved["id"] == model_id
+        assert retrieved["name"] == default_payload["name"]
+        assert retrieved["version"] == default_payload["version"]
+        assert retrieved["artifact_path"] == default_payload["artifact_path"]
+        assert retrieved["status"] == default_payload["status"]
+        assert retrieved["traffic_weight"] == default_payload["traffic_weight"]
     finally:
         if model_id is not None:
             delete_model(client, model_id)
@@ -119,7 +119,7 @@ def test_update_status(client, default_payload):
         get_response = client.get(f"/admin/models/{model_id}")
         assert get_response.status_code == 200
         retrieved = get_response.json()
-        assert retrieved[4] == "inactive"
+        assert retrieved["status"] == "inactive"
     finally:
         if model_id is not None:
             delete_model(client, model_id)
@@ -168,12 +168,12 @@ def test_rollback_model(client, default_payload):
         # Get v1
         v1_get = client.get(f"/admin/models/{v1_id}")
         assert v1_get.status_code == 200
-        assert v1_get.json()[4] == "active"
+        assert v1_get.json()["status"] == "active"
 
         # Get v2
         v2_get = client.get(f"/admin/models/{v2_id}")
         assert v2_get.status_code == 200
-        assert v2_get.json()[4] == "inactive"
+        assert v2_get.json()["status"] == "inactive"
 
     finally:
         # Clean up in reverse creation order
