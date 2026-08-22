@@ -1,6 +1,7 @@
 from app.repositories.model_repository import ModelRepository
 from app.services.model_service import ModelService
 from app.services.traffic_router import TrafficRouter
+from app.services.cache_service import CacheService
 
 
 class InferenceService:
@@ -9,6 +10,7 @@ class InferenceService:
         router: TrafficRouter | None = None,
         model_service: ModelService | None = None,
         model_repository: ModelRepository | None = None,
+        cache_service: CacheService | None = None,
     ):
         router = router if router is not None else TrafficRouter()
         model_service = model_service if model_service is not None else ModelService()
@@ -19,6 +21,10 @@ class InferenceService:
         self.router: TrafficRouter = router
         self.model_service: ModelService = model_service
         self.model_repository: ModelRepository = model_repository
+
+        self.cache_service: CacheService = (
+            cache_service if cache_service is not None else CacheService()
+        )
 
     def predict(self, features: list[float]) -> dict[str, str]:
         active_models = self.model_repository.get_active_models()
@@ -34,5 +40,16 @@ class InferenceService:
         if not selected_version:
             raise ValueError("No model selected, something went wrong")
 
+        # -- CACHE CHECK --
+        cache_key = self.cache_service.generate_cache_key(selected_version, features)
+        cached_prediction = self.cache_service.get(cache_key)
+        if cached_prediction is not None:
+            return {"prediction": cached_prediction, "model_version": selected_version}
+
+        # -- CHACHE MISS --
         prediction = self.model_service.predict(selected_version, features)
+        # store in cache for future requests
+        self.cache_service.set(cache_key, prediction)
         return {"prediction": prediction, "model_version": selected_version}
+
+    
