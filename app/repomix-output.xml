@@ -1,0 +1,1298 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+api/
+  admin.py
+  prediction.py
+  trafic_router.py
+db/
+  models.py
+  session.py
+middleware/
+  api_key_auth.py
+  rate_limit.py
+models/
+  train/
+    train.py
+  iris_model.pkl
+repositories/
+  model_repository.py
+schemas/
+  model.py
+  prediction.py
+services/
+  cache_service.py
+  inference_service.py
+  model_service.py
+  traffic_router.py
+tests/
+  test_admin_api.py
+  test_inference_service.py
+  test_model_service.py
+  test_prediction.py
+  test_traffic_router.py
+docker-compose.yml
+Dockerfile
+main.py
+requirements.txt
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="api/admin.py">
+from fastapi import (
+    APIRouter,
+    HTTPException,
+    status,
+)  # pyright: ignore[reportMissingImports]
+
+from app.repositories.model_repository import ModelRepository
+from app.schemas.model import ModelCreate, UpdateWeightRequest
+
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
+router = APIRouter()
+model_repository = ModelRepository()
+
+
+@router.post("/admin/models", status_code=status.HTTP_201_CREATED)
+def register_model(model: ModelCreate) -> dict[str, str | tuple]:
+    """
+    Register a new model version.
+    """
+    model_data = model.model_dump()
+    created = model_repository.create_model(**model_data)
+    if created is None:
+        raise HTTPException(status_code=400, detail="Failed to create model")
+    return {"status": "success", "model": created}
+
+
+@router.get("/admin/models")
+def get_models() -> list[dict[str, str]]:
+    """
+    List all models with version and status.
+    """
+    models = model_repository.list_models()
+    return [{"version": m[2], "status": m[4]} for m in models]
+
+
+@router.put("/admin/models/{version}/weight")
+def update_model_weight(version: str, payload: UpdateWeightRequest) -> dict[str, str]:
+    """
+    Update traffic weight for a given model version.
+    """
+    updated = model_repository.update_traffic_weight(version, payload.traffic_weight)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Model version not found")
+    return {"status": "success"}
+
+
+@router.put("/admin/models/{version}/status")
+def update_model_status_by_version(version: str, status: str) -> dict[str, str]:
+    """
+    Update status (active/inactive) for a given model version.
+    """
+    updated = model_repository.update_status_by_version(version, status)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Model version not found")
+    return {"status": "success"}
+
+
+
+@router.put("/admin/models/{model_id}")
+def update_model_status_by_id(model_id: int, payload: dict[str, str]) -> dict[str, str]:
+    """
+    Update status (active/inactive) for a given model by its database ID.
+    """
+    status_value = payload.get("status")
+    if status_value not in ("active", "inactive"):
+        raise HTTPException(status_code=400, detail="Invalid status value")
+    updated = model_repository.update_status_by_id(model_id, status_value)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Model not found")
+    return {"status": "success"}
+
+
+
+@router.put("/admin/models/{version}/rollback")  # path corrected to match tests
+def rollback_model(version: str) -> dict[str, str]:
+    """
+    Emergency rollback: deactivates all later versions and activates this one.
+    """
+    rolled = model_repository.rollback_model(version)
+    if not rolled:
+        raise HTTPException(status_code=404, detail="Model version not found")
+    return {"status": "success"}
+
+
+@router.get("/admin/models/{model_id}")
+def get_model_by_id(model_id: int) -> tuple:
+    """
+    Retrieve full model record by its database ID.
+    """
+    model = model_repository.get_model_by_id(model_id)
+    if model is None:
+        raise HTTPException(status_code=404, detail="Model not found")
+    return model
+
+
+@router.delete("/admin/models/{model_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_model(model_id: int) -> None:
+    """
+    Delete a model record by its database ID.
+    """
+    deleted = model_repository.delete_model(model_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Model not found")
+    return None
+
+
+@router.get("/admin/models/version/{version}")
+def get_model_by_version(version: str) -> dict[str, str | int]:
+    """
+    Retrieve full model record by its version.
+    """
+    model = model_repository.get_model_by_version(version)
+    if model is None:
+        raise HTTPException(status_code=404, detail="Model not found")
+    return {
+        "id": model[0],
+        "name": model[1],
+        "version": model[2],
+        "artifact_path": model[3],
+        "status": model[4],
+        "traffic_weight": model[5],
+    }
+</file>
+
+<file path="api/prediction.py">
+from fastapi import APIRouter
+
+from app.schemas.prediction import PredictionRequest, PredictionResponse
+from app.services.inference_service import InferenceService
+
+router: APIRouter = APIRouter()  # pyright: ignore[reportUnknownVariableType]
+inference_service = InferenceService()
+
+
+@router.get("/health")  # pyright: ignore[reportUntypedFunctionDecorator, reportUnknownMemberType]
+def health():
+    return {"status": "healthy"}
+
+
+@router.get("/model/info")  # pyright: ignore[reportUntypedFunctionDecorator, reportUnknownMemberType]
+def model_info():
+    return {"name": "iris-classifier", "version": "1.0.0"}
+
+
+@router.post("/predict", response_model=PredictionResponse)  # pyright: ignore[reportUntypedFunctionDecorator, reportUnknownMemberType]
+def predict(request: PredictionRequest):
+    prediction = inference_service.predict(
+        [
+            request.sepal_length,
+            request.sepal_width,
+            request.petal_length,
+            request.petal_width,
+        ]
+    )
+
+    return PredictionResponse(
+        prediction=prediction["prediction"], model_version=prediction["model_version"]
+    )
+</file>
+
+<file path="api/trafic_router.py">
+from app.services.inference_service import InferenceService
+
+
+class TrafficRouter:
+    def __init__(self, inference_service) -> None:
+        if inference_service is not None:
+            self.inference_service = inference_service
+        else:
+            self.inference_service = InferenceService()
+
+    # Select the model based on the input models weights
+    def select_model(self, models):
+        """
+        input example:
+            [
+                {
+                    "version": "1.0.0",
+                    "weight": 90
+                },
+                {
+                    "version": "2.0.0",
+                    "weight": 10
+                }
+            ]
+
+        output: (based on more weight)
+            1.0.0
+        """
+        model_version = max(models, key=lambda x: x['weight'])['version']
+        self.inference_service.select_model(model_version)
+        return "Model selected: " + model_version
+</file>
+
+<file path="db/models.py">
+from datetime import datetime, timezone
+from enum import Enum
+from typing import override
+
+from sqlalchemy import (  # pyright: ignore[reportMissingImports]
+    Column,  # pyright: ignore[reportUnknownVariableType]
+    DateTime,  # pyright: ignore[reportUnknownVariableType]
+    Float,  # pyright: ignore[reportUnknownVariableType]
+    Integer,  # pyright: ignore[reportUnknownVariableType]
+    String,  # pyright: ignore[reportUnknownVariableType]
+)
+from sqlalchemy import (  # pyright: ignore[reportMissingImports]
+    Enum as SQLEnum,  # pyright: ignore[reportUnknownVariableType]
+)
+from sqlalchemy.orm import (  # pyright: ignore[reportMissingImports]
+    declarative_base,  # pyright: ignore[reportUnknownVariableType]
+)
+
+Base = declarative_base()  # pyright: ignore[reportUnknownVariableType]
+
+
+class ModelStatus(str, Enum):
+    PENDING = "pending"
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    ARCHIVED = "archived"
+    FAILED = "failed"
+
+
+class Model(Base):  # pyright: ignore[reportUntypedBaseClass]
+    """
+    ORM model representing metadata about a deployed model version.
+
+    Table: models
+
+    Columns:
+        id              - Primary key.
+        name            - Name of the model (e.g. "iris").
+        version         - Version string (e.g. "1.0.0").
+        artifact_path   - Filesystem/object-store path to the model artifact.
+        status          - Current lifecycle status of the model version.
+        traffic_weight  - Percentage of traffic (0-100) routed to this version.
+                           Supports canary deployments, e.g.:
+
+                               id=1, name=iris, version=1.0.0, traffic_weight=90
+                               id=2, name=iris, version=2.0.0, traffic_weight=10
+
+        created_at      - Timestamp of when this model version was registered.
+    """
+
+    __tablename__: str = "models"
+
+    id: int = Column(Integer, primary_key=True, autoincrement=True)  # pyright: ignore[reportUnknownVariableType]
+    name: str = Column(String, nullable=False, index=True)  # pyright: ignore[reportUnknownVariableType]
+    version: str = Column(String, nullable=False)  # pyright: ignore[reportUnknownVariableType]
+    artifact_path: str = Column(String, nullable=False)  # pyright: ignore[reportUnknownVariableType]
+    status: ModelStatus = Column(  # pyright: ignore[reportUnknownVariableType]
+        SQLEnum(ModelStatus), nullable=False, default=ModelStatus.PENDING
+    )
+    traffic_weight: float = Column(Float, nullable=False, default=0.0)  # pyright: ignore[reportUnknownVariableType]
+    created_at: datetime = Column(  # pyright: ignore[reportUnknownVariableType]
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+    @override
+    def __repr__(self) -> str:
+        return (
+            f"<Model(id={self.id}, name={self.name!r}, version={self.version!r}, "
+            f"status={self.status}, traffic_weight={self.traffic_weight})>"
+        )
+</file>
+
+<file path="db/session.py">
+# Create database connections. (engine, session)
+</file>
+
+<file path="middleware/api_key_auth.py">
+# Responsibility: Validate API keys.
+
+"""
+Example request:
+    POST /predict
+    X-API-KEY: abc123
+
+
+"""
+</file>
+
+<file path="middleware/rate_limit.py">
+# Responsibility: Protect API from abuse.
+
+"""
+Store counters in Redis.
+
+
+"""
+</file>
+
+<file path="models/train/train.py">
+from sklearn.datasets import load_iris
+from sklearn.ensemble import RandomForestClassifier
+
+import joblib
+
+X,y = load_iris(return_X_y=True)
+
+model = RandomForestClassifier()
+
+model.fit(X,y)
+
+joblib.dump(model, "../iris_model.pkl")
+</file>
+
+<file path="repositories/model_repository.py">
+import os
+
+import psycopg2  # pyright: ignore[reportMissingModuleSource]
+from dotenv import load_dotenv
+
+_ = load_dotenv()
+
+
+class ModelRepository:
+    def __init__(self):
+        self.models: dict[str, int] = {}
+        self.conn: psycopg2.extensions.connection = self.db_connect()
+        self._ensure_schema()
+
+    def db_connect(self):
+        conn = psycopg2.connect(
+            host=os.getenv("POSTGRES_HOST"),
+            port=os.getenv("POSTGRES_PORT"),
+            user=os.getenv("POSTGRES_USER"),
+            password=os.getenv("POSTGRES_PASSWORD"),
+            dbname=os.getenv("POSTGRES_DB"),
+        )
+        return conn
+
+    def _ensure_schema(self):
+        """Create the models table if it doesn't exist."""
+        with self.conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS models (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    version TEXT NOT NULL UNIQUE,
+                    artifact_path TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    traffic_weight INTEGER NOT NULL
+                )
+            """)
+        self.conn.commit()
+
+    def create_model(
+        self,
+        name: str,
+        version: str,
+        artifact_path: str,
+        status: str,
+        traffic_weight: int,
+    ) -> tuple[int, str, str, str, str, int] | None:
+        """Insert a new model and return the full record."""
+        with self.conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO models (name, version, artifact_path, status, traffic_weight)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (version) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    artifact_path = EXCLUDED.artifact_path,
+                    status = EXCLUDED.status,
+                    traffic_weight = EXCLUDED.traffic_weight
+                RETURNING *
+                """,
+                (name, version, artifact_path, status, traffic_weight),
+            )
+            row = cur.fetchone()
+            self.conn.commit()
+            return row
+
+    def get_model_by_id(self, id: int) -> tuple[int, str, str, str, str, int] | None:
+        """Retrieve a model by its primary key."""
+        with self.conn.cursor() as cur:
+            cur.execute("SELECT * FROM models WHERE id = %s", (id,))
+            return cur.fetchone()
+
+    def get_model_by_version(
+        self, version: str
+    ) -> tuple[int, str, str, str, str, int] | None:
+        """Retrieve a model by its version string."""
+        with self.conn.cursor() as cur:
+            cur.execute("SELECT * FROM models WHERE version = %s", (version,))
+            return cur.fetchone()
+
+    def list_models(self) -> list[tuple[int, str, str, str, str, int]]:
+        """Return all models, ordered by creation (ID)."""
+        with self.conn.cursor() as cur:
+            cur.execute("SELECT * FROM models ORDER BY id ASC")
+            return cur.fetchall()
+
+    def get_active_models(self) -> list[tuple[int, str, str, str, str, int]]:
+        """Return only models with status 'active'."""
+        with self.conn.cursor() as cur:
+            cur.execute("SELECT * FROM models WHERE status = 'active'")
+            return cur.fetchall()
+
+    def update_traffic_weight(self, version: str, traffic_weight: int) -> bool:
+        """
+        Update traffic_weight for a given version.
+        Returns True if at least one row was updated, False otherwise.
+        """
+        with self.conn.cursor() as cur:
+            cur.execute(
+                "UPDATE models SET traffic_weight = %s WHERE version = %s",
+                (traffic_weight, version),
+            )
+            updated = cur.rowcount > 0
+            self.conn.commit()
+            return updated
+
+    def update_status_by_version(self, version: str, status: str) -> bool:
+        """
+        Update status for a given version.
+        Returns True if at least one row was updated, False otherwise.
+        """
+        with self.conn.cursor() as cur:
+            cur.execute(
+                "UPDATE models SET status = %s WHERE version = %s",
+                (status, version),
+            )
+            updated = cur.rowcount > 0
+            self.conn.commit()
+            return updated
+        
+    def update_status_by_id(self, model_id: int, status: str) -> bool:
+        """
+            Update status for a given id.
+            Returns True if at least one row was updated, False otherwise.
+        """
+        with self.conn.cursor() as cur:
+            cur.execute(
+                "UPDATE models SET status = %s WHERE id = %s",
+                (status, model_id),
+            )
+            updated = cur.rowcount > 0
+            self.conn.commit()
+            return updated
+
+    def rollback_model(self, target_version: str) -> bool:
+        """
+        Deactivate all active models, then activate the specified version.
+        Returns True if the target version exists and was activated, False otherwise.
+        """
+        with self.conn.cursor() as cur:
+            # First check if the target version exists
+            cur.execute("SELECT 1 FROM models WHERE version = %s", (target_version,))
+            exists = cur.fetchone() is not None
+            if not exists:
+                return False
+
+            # Deactivate all active models
+            cur.execute("UPDATE models SET status = 'inactive' WHERE status = 'active'")
+            # Activate the target version
+            cur.execute(
+                "UPDATE models SET status = 'active' WHERE version = %s",
+                (target_version,),
+            )
+            self.conn.commit()
+            return True
+
+    def delete_model(self, model_id: int) -> bool:
+        """
+        Delete a model by its ID.
+        Returns True if a row was deleted, False otherwise.
+        """
+        with self.conn.cursor() as cur:
+            cur.execute("DELETE FROM models WHERE id = %s", (model_id,))
+            deleted = cur.rowcount > 0
+            self.conn.commit()
+            return deleted
+</file>
+
+<file path="schemas/model.py">
+# Schemas for admin operations.
+from pydantic import BaseModel
+
+
+class ModelCreate(BaseModel):
+    name: str
+    version: str
+    artifact_path: str
+    status: str
+    traffic_weight: int
+
+
+class UpdateWeightRequest(BaseModel):
+    traffic_weight: int
+</file>
+
+<file path="schemas/prediction.py">
+from pydantic import BaseModel
+
+class PredictionRequest(BaseModel):
+    sepal_length: float
+    sepal_width: float
+    petal_length: float
+    petal_width: float
+
+
+class PredictionResponse(BaseModel):
+    prediction: str
+    model_version: str
+</file>
+
+<file path="services/cache_service.py">
+# Responsibility: Read/write prediction cache.
+"""
+better to use keys=sha256(payload)
+
+version:payload_hash
+
+example:
+    1.0.0:abc123
+    2.0.0:def456
+"""
+</file>
+
+<file path="services/inference_service.py">
+from app.repositories.model_repository import ModelRepository
+from app.services.model_service import ModelService
+from app.services.traffic_router import TrafficRouter
+
+
+class InferenceService:
+    def __init__(
+        self,
+        router: TrafficRouter | None = None,
+        model_service: ModelService | None = None,
+        model_repository: ModelRepository | None = None,
+    ):
+        router = router if router is not None else TrafficRouter()
+        model_service = model_service if model_service is not None else ModelService()
+        model_repository = (
+            model_repository if model_repository is not None else ModelRepository()
+        )
+
+        self.router: TrafficRouter = router
+        self.model_service: ModelService = model_service
+        self.model_repository: ModelRepository = model_repository
+
+    def predict(self, features: list[float]) -> dict[str, str]:
+        active_models = self.model_repository.get_active_models()
+        if not active_models:
+            raise ValueError("No active models available for inference")
+
+        router_input = {
+            row[2]: row[5] for row in active_models
+        }  # model_version: model_weight
+
+        selected_version = self.router.select_model(router_input)
+
+        if not selected_version:
+            raise ValueError("No model selected, something went wrong")
+
+        prediction = self.model_service.predict(selected_version, features)
+        return {"prediction": prediction, "model_version": selected_version}
+</file>
+
+<file path="services/model_service.py">
+import logging
+
+import joblib  # pyright: ignore[reportMissingImports]
+
+from app.repositories.model_repository import ModelRepository
+
+logger = logging.getLogger(__name__)
+
+
+class ModelService:
+    def __init__(self):
+        self.model_repository: ModelRepository = ModelRepository()
+        self.loaded_models: dict[str, object] = {}
+        self.load_models()
+
+    def load_models(self):
+        active_models = self.model_repository.get_active_models()
+        for model in active_models:
+            version = model[2]
+            artifact_path = model[3]
+            try:
+                self.load_model(version, artifact_path)
+            except (FileNotFoundError, OSError) as exc:
+                # A single registry entry with a missing/corrupt artifact
+                # should not prevent the service from starting up.
+                logger.warning(
+                    "Skipping model version %s: failed to load artifact %s (%s)",
+                    version,
+                    artifact_path,
+                    exc,
+                )
+
+    def load_model(self, version: str, path: str):
+        self.loaded_models[version] = joblib.load(path)  # pyright: ignore[reportUnknownMemberType]
+
+    def unload_model(self, version: str):
+        del self.loaded_models[version]
+
+    def _load_model_on_demand(self, version: str):
+        # The in-memory cache is populated at startup and can miss models
+        # registered afterwards (e.g. via the admin API). Fall back to
+        # loading the artifact on cache-miss instead of failing outright.
+        model_row = self.model_repository.get_model_by_version(version)
+        if model_row is None:
+            raise ValueError(f"Model version {version} is not registered")
+
+        artifact_path = model_row[3]
+        try:
+            self.load_model(version, artifact_path)
+        except (FileNotFoundError, OSError) as exc:
+            raise ValueError(
+                f"Model version {version} is not loaded: failed to load "
+                f"artifact {artifact_path} ({exc})"
+            ) from exc
+
+    def predict(self, version: str, features: list[float]) -> str:
+        if version not in self.loaded_models:
+            self._load_model_on_demand(version)
+        model = self.loaded_models[version]
+        prediction = model.predict(  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType, reportAttributeAccessIssue]
+            [features]
+        )  # because sklearn expects: 2D array; not like [5.1, 3.5, 1.4, 0.2]
+        return str(prediction)  # pyright: ignore[reportUnknownArgumentType]
+</file>
+
+<file path="services/traffic_router.py">
+import random
+
+
+class TrafficRouter:
+    def select_model(self, active_models: dict[str, int]) -> str:
+        if not active_models:
+            raise ValueError("active_models must not be empty")
+
+        # active models: e.g.: {'v1': 10, 'v2': 20, 'v3': 30}
+        total_weight = sum(weight for _, weight in active_models.items())
+        if total_weight <= 0:
+            raise ValueError("total_weight must be greater than 0")
+        random_number = random.randint(1, total_weight)
+        routing_total = 0
+        for model_version, weight in active_models.items():
+            routing_total += weight
+            if random_number <= routing_total:
+                return model_version
+
+        raise RuntimeError("No model selected, something went wrong")
+</file>
+
+<file path="tests/test_admin_api.py">
+import pytest  # pyright: ignore[reportMissingImports]
+from fastapi.testclient import TestClient  # pyright: ignore[reportMissingImports]
+
+from app.main import app
+
+
+@pytest.fixture
+def client():
+    """Return a test client instance."""
+    return TestClient(app)
+
+
+@pytest.fixture
+def default_payload():
+    """Default payload for model creation."""
+    return {
+        "name": "test-model",
+        "version": "1.0.0",
+        "artifact_path": "models/test_model.pkl",
+        "status": "active",
+        "traffic_weight": 10,
+    }
+
+
+def delete_model(client, model_id):
+    """Delete a model by ID and assert success."""
+    response = client.delete(f"/admin/models/{model_id}")
+    assert response.status_code in (200, 204), f"Failed to delete model {model_id}"
+
+
+def test_create_model(client, default_payload):
+    """
+    POST /admin/models
+
+    expect 200 or 201
+
+    verify:
+        model exists afterwards
+    """
+    model_id = None
+    try:
+        response = client.post("/admin/models", json=default_payload)
+        assert response.status_code in (200, 201)
+
+        model_data = response.json()["model"]
+        model_id = model_data[0]
+        assert model_id is not None
+
+        get_response = client.get(f"/admin/models/{model_id}")
+        assert get_response.status_code == 200
+        retrieved = get_response.json()
+        assert retrieved[0] == model_id
+        assert retrieved[1] == default_payload["name"]
+        assert retrieved[2] == default_payload["version"]
+        assert retrieved[3] == default_payload["artifact_path"]
+        assert retrieved[4] == default_payload["status"]
+        assert retrieved[5] == default_payload["traffic_weight"]
+    finally:
+        if model_id is not None:
+            delete_model(client, model_id)
+
+
+def test_update_traffic_weight(client, default_payload):
+    """
+    create model
+
+    change weight to 50
+
+    fetch model
+
+    verify weight=50
+    """
+    model_id = None
+    try:
+        # Create model
+        response = client.post("/admin/models", json=default_payload)
+        assert response.status_code in (200, 201)
+        model_data = response.json()["model"]
+        model_id = model_data[0]
+        version = model_data[2]
+        # Update traffic weight
+        update_payload = {"traffic_weight": 50}
+        update_response = client.put(
+            f"/admin/models/{version}/weight", json=update_payload
+        )
+        assert update_response.status_code in (200, 201)
+
+        # Verify weight changed
+        get_response = client.get(f"/admin/models/version/{version}")
+        assert get_response.status_code == 200
+        retrieved = get_response.json()
+        print("=" * 200)
+        print(retrieved)
+        assert retrieved["traffic_weight"] == 50
+    finally:
+        if model_id is not None:
+            delete_model(client, model_id)
+
+
+def test_update_status(client, default_payload):
+    """
+    create model
+
+    set inactive
+
+    verify status changed
+    """
+    model_id = None
+    try:
+        response = client.post("/admin/models", json=default_payload)
+        assert response.status_code in (200, 201)
+        model_data = response.json()["model"]
+        model_id = model_data[0]
+
+        update_payload = {"status": "inactive"}
+        update_response = client.put(f"/admin/models/{model_id}", json=update_payload)
+        assert update_response.status_code in (200, 201)
+
+        get_response = client.get(f"/admin/models/{model_id}")
+        assert get_response.status_code == 200
+        retrieved = get_response.json()
+        assert retrieved[4] == "inactive"
+    finally:
+        if model_id is not None:
+            delete_model(client, model_id)
+
+
+def test_rollback_model(client, default_payload):
+    """
+    v1 active
+    v2 active
+
+    rollback v1
+
+    verify:
+        v1 active
+        v2 inactive
+    """
+    v1_payload = {
+        **default_payload,
+        "version": "1.0.0",
+    }
+    v2_payload = {
+        **default_payload,
+        "version": "2.0.0",
+    }
+
+    v1_id = None
+    v2_id = None
+
+    try:
+        # Create v1
+        r1 = client.post("/admin/models", json=v1_payload)
+        assert r1.status_code in (200, 201)
+        v1_data = r1.json()["model"]
+        v1_id = v1_data[0]
+
+        # Create v2
+        r2 = client.post("/admin/models", json=v2_payload)
+        assert r2.status_code in (200, 201)
+        v2_data = r2.json()["model"]
+        v2_id = v2_data[0]
+
+        # Rollback to v1 (using version string)
+        rollback_response = client.put("/admin/models/1.0.0/rollback")
+        assert rollback_response.status_code in (200, 201)
+
+        # Get v1
+        v1_get = client.get(f"/admin/models/{v1_id}")
+        assert v1_get.status_code == 200
+        assert v1_get.json()[4] == "active"
+
+        # Get v2
+        v2_get = client.get(f"/admin/models/{v2_id}")
+        assert v2_get.status_code == 200
+        assert v2_get.json()[4] == "inactive"
+
+    finally:
+        # Clean up in reverse creation order
+        if v2_id is not None:
+            delete_model(client, v2_id)
+        if v1_id is not None:
+            delete_model(client, v1_id)
+</file>
+
+<file path="tests/test_inference_service.py">
+from unittest.mock import Mock
+
+import pytest  # pyright: ignore[reportMissingImports]
+
+from app.services.inference_service import InferenceService
+
+# Constants to represent a model row from the repository.
+# The service uses row[2] as version and row[5] as weight.
+MODEL_ROW = ("id", "name", "1.0.0", "extra", "extra", 1.0)
+
+
+def test_single_active_model_returns_prediction_with_version(mocker):
+    # Arrange: mock repository to return one active model as a tuple
+    mock_repository: Mock = mocker.Mock()
+    mock_repository.get_active_models.return_value = [MODEL_ROW]
+
+    # Mock router's select_model method (the actual method used by the service)
+    mock_router: Mock = mocker.Mock()
+    mock_router.select_model.return_value = "1.0.0"
+
+    # Mock model service to return a prediction
+    mock_model_service: Mock = mocker.Mock()
+    mock_model_service.predict.return_value = "..."
+
+    inference_service = InferenceService(
+        model_repository=mock_repository,
+        router=mock_router,
+        model_service=mock_model_service,
+    )
+
+    # Act
+    features = [1.0, 2.0, 3.0]
+    result = inference_service.predict(features)
+
+    # Assert
+    expected = {
+        "prediction": "...",
+        "model_version": "1.0.0",
+    }
+    assert result == expected
+
+
+def test_router_is_called_exactly_once(mocker):
+    # Arrange: mock repository to return one active model as a tuple
+    mock_repository: Mock = mocker.Mock()
+    mock_repository.get_active_models.return_value = [MODEL_ROW]
+
+    # Mock router's select_model method
+    mock_router: Mock = mocker.Mock()
+    mock_router.select_model.return_value = "1.0.0"
+
+    # Mock model service to return a prediction
+    mock_model_service: Mock = mocker.Mock()
+    mock_model_service.predict.return_value = "..."
+
+    inference_service = InferenceService(
+        model_repository=mock_repository,
+        router=mock_router,
+        model_service=mock_model_service,
+    )
+
+    # Act
+    features = [1.0, 2.0, 3.0]
+    inference_service.predict(features)
+
+    # Assert
+    mock_router.select_model.assert_called_once()
+</file>
+
+<file path="tests/test_model_service.py">
+import pytest  # pyright: ignore[reportMissingImports]
+
+from app.services.model_service import ModelService
+
+
+# test 1
+def test_predict():
+    model_service = ModelService()
+    prediction = model_service.predict("1.0.0", [5.1, 3.5, 1.4, 0.2])
+    assert prediction is not None
+    assert isinstance(prediction, str)
+
+
+# test 2
+def test_predict_version_missing():
+    model_service = ModelService()
+    with pytest.raises(ValueError):  # pyright: ignore[reportUnknownMemberType]
+        _ = model_service.predict("999.0.0", [5.1, 3.5, 1.4, 0.2])
+</file>
+
+<file path="tests/test_prediction.py">
+from fastapi.testclient import TestClient
+
+from app.main import app
+
+client = TestClient(app)
+
+
+def test_health():
+    response = client.get("/health")
+
+    assert response.json()["status"] == "healthy"
+    assert response.status_code == 200
+
+
+def test_predict():
+
+    payload = {
+        "sepal_length": 2.3,
+        "sepal_width": 4.2,
+        "petal_length": 8.2,
+        "petal_width": 6.3,
+    }
+
+    response = client.post("/predict", json=payload)
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert "prediction" in body
+    assert "model_version" in body
+</file>
+
+<file path="tests/test_traffic_router.py">
+from unittest.mock import patch
+
+import pytest  # pyright: ignore[reportMissingImports]
+
+from app.services.traffic_router import TrafficRouter
+
+
+def test_select_model_rejects_empty_models():
+    router = TrafficRouter()
+
+    with pytest.raises(ValueError):  # pyright: ignore[reportUnknownMemberType]
+        _ = router.select_model({})
+
+
+def test_select_model_rejects_zero_weight():
+    router = TrafficRouter()
+
+    with pytest.raises(ValueError):  # pyright: ignore[reportUnknownMemberType]
+        _ = router.select_model(
+            {
+                "v1": 0,
+                "v2": 0,
+            }
+        )
+
+
+def test_select_model_selects_v1():
+    router = TrafficRouter()
+
+    with patch(
+        "app.services.traffic_router.random.randint",
+        return_value=5,
+    ):
+        result = router.select_model(
+            {
+                "v1": 10,
+                "v2": 20,
+                "v3": 30,
+            }
+        )
+
+    assert result == "v1"
+
+
+def test_select_model_selects_v2():
+    router = TrafficRouter()
+
+    with patch(
+        "app.services.traffic_router.random.randint",
+        return_value=15,
+    ):
+        result = router.select_model(
+            {
+                "v1": 10,
+                "v2": 20,
+                "v3": 30,
+            }
+        )
+
+    assert result == "v2"
+
+
+def test_select_model_selects_v3():
+    router = TrafficRouter()
+
+    with patch(
+        "app.services.traffic_router.random.randint",
+        return_value=45,
+    ):
+        result = router.select_model(
+            {
+                "v1": 10,
+                "v2": 20,
+                "v3": 30,
+            }
+        )
+
+    assert result == "v3"
+
+
+def test_select_model_v1_upper_boundary():
+    router = TrafficRouter()
+
+    with patch(
+        "app.services.traffic_router.random.randint",
+        return_value=10,
+    ):
+        result = router.select_model(
+            {
+                "v1": 10,
+                "v2": 20,
+                "v3": 30,
+            }
+        )
+
+    assert result == "v1"
+
+
+def test_select_model_v2_lower_boundary():
+    router = TrafficRouter()
+
+    with patch(
+        "app.services.traffic_router.random.randint",
+        return_value=11,
+    ):
+        result = router.select_model(
+            {
+                "v1": 10,
+                "v2": 20,
+                "v3": 30,
+            }
+        )
+
+    assert result == "v2"
+
+
+def test_select_model_v2_upper_boundary():
+    router = TrafficRouter()
+
+    with patch(
+        "app.services.traffic_router.random.randint",
+        return_value=30,
+    ):
+        result = router.select_model(
+            {
+                "v1": 10,
+                "v2": 20,
+                "v3": 30,
+            }
+        )
+
+    assert result == "v2"
+
+
+def test_select_model_v3_lower_boundary():
+    router = TrafficRouter()
+
+    with patch(
+        "app.services.traffic_router.random.randint",
+        return_value=31,
+    ):
+        result = router.select_model(
+            {
+                "v1": 10,
+                "v2": 20,
+                "v3": 30,
+            }
+        )
+
+    assert result == "v3"
+
+
+def test_select_model_v3_upper_boundary():
+    router = TrafficRouter()
+
+    with patch(
+        "app.services.traffic_router.random.randint",
+        return_value=60,
+    ):
+        result = router.select_model(
+            {
+                "v1": 10,
+                "v2": 20,
+                "v3": 30,
+            }
+        )
+
+    assert result == "v3"
+</file>
+
+<file path="docker-compose.yml">
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: modelforge-db
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: modelforge-api
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      POSTGRES_HOST: db
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+</file>
+
+<file path="Dockerfile">
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . ./app
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+</file>
+
+<file path="main.py">
+from fastapi import FastAPI  # pyright: ignore[reportMissingImports]
+
+from app.api.admin import router as admin_router
+from app.api.prediction import router
+
+app = FastAPI(title="ModelForege", version="1.0.0")
+
+app.include_router(router)
+app.include_router(admin_router)
+</file>
+
+<file path="requirements.txt">
+fastapi
+uvicorn
+scikit-learn
+numpy
+joblib
+pytest
+httpx
+sqlalchemy
+psycopg2-binary
+alembic
+python-dotenv
+</file>
+
+</files>

@@ -1,6 +1,10 @@
+import logging
+
 import joblib  # pyright: ignore[reportMissingImports]
 
 from app.repositories.model_repository import ModelRepository
+
+logger = logging.getLogger(__name__)
 
 
 class ModelService:
@@ -11,9 +15,20 @@ class ModelService:
 
     def load_models(self):
         active_models = self.model_repository.get_active_models()
-        for model_version in active_models:
-            version = model_version[0]
-            self.load_model(version, f"app/models/iris_model_{version}.pkl")
+        for model in active_models:
+            version = model[2]
+            artifact_path = model[3]
+            try:
+                self.load_model(version, artifact_path)
+            except (FileNotFoundError, OSError) as exc:
+                # A single registry entry with a missing/corrupt artifact
+                # should not prevent the service from starting up.
+                logger.warning(
+                    "Skipping model version %s: failed to load artifact %s (%s)",
+                    version,
+                    artifact_path,
+                    exc,
+                )
 
     def load_model(self, version: str, path: str):
         self.loaded_models[version] = joblib.load(path)  # pyright: ignore[reportUnknownMemberType]
@@ -21,9 +36,26 @@ class ModelService:
     def unload_model(self, version: str):
         del self.loaded_models[version]
 
+    def _load_model_on_demand(self, version: str):
+        # The in-memory cache is populated at startup and can miss models
+        # registered afterwards (e.g. via the admin API). Fall back to
+        # loading the artifact on cache-miss instead of failing outright.
+        model_row = self.model_repository.get_model_by_version(version)
+        if model_row is None:
+            raise ValueError(f"Model version {version} is not registered")
+
+        artifact_path = model_row[3]
+        try:
+            self.load_model(version, artifact_path)
+        except (FileNotFoundError, OSError) as exc:
+            raise ValueError(
+                f"Model version {version} is not loaded: failed to load "
+                f"artifact {artifact_path} ({exc})"
+            ) from exc
+
     def predict(self, version: str, features: list[float]) -> str:
         if version not in self.loaded_models:
-            raise ValueError(f"Model version {version} is not loaded")
+            self._load_model_on_demand(version)
         model = self.loaded_models[version]
         prediction = model.predict(  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType, reportAttributeAccessIssue]
             [features]

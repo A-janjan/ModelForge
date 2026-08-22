@@ -4,7 +4,7 @@ from app.schemas.prediction import PredictionRequest, PredictionResponse
 from app.services.inference_service import InferenceService
 
 router: APIRouter = APIRouter()  # pyright: ignore[reportUnknownVariableType]
-model_service = InferenceService()
+inference_service = InferenceService()
 
 
 @router.get("/health")  # pyright: ignore[reportUntypedFunctionDecorator, reportUnknownMemberType]
@@ -19,7 +19,7 @@ def model_info():
 
 @router.post("/predict", response_model=PredictionResponse)  # pyright: ignore[reportUntypedFunctionDecorator, reportUnknownMemberType]
 def predict(request: PredictionRequest):
-    prediction = model_service.predict(
+    prediction = inference_service.predict(
         [
             request.sepal_length,
             request.sepal_width,
