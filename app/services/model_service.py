@@ -1,8 +1,9 @@
 import logging
 
-import joblib  # pyright: ignore[reportMissingImports]
+import joblib
 
 from app.repositories.model_repository import ModelRepository
+from app.services.metrics_service import set_active_models
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,7 @@ class ModelService:
             artifact_path = model[3]
             try:
                 self.load_model(version, artifact_path)
+                set_active_models(len(self.loaded_models))
             except (FileNotFoundError, OSError) as exc:
                 # A single registry entry with a missing/corrupt artifact
                 # should not prevent the service from starting up.
@@ -31,7 +33,7 @@ class ModelService:
                 )
 
     def load_model(self, version: str, path: str):
-        self.loaded_models[version] = joblib.load(path)  # pyright: ignore[reportUnknownMemberType]
+        self.loaded_models[version] = joblib.load(path)
 
     def unload_model(self, version: str):
         del self.loaded_models[version]
@@ -57,7 +59,7 @@ class ModelService:
         if version not in self.loaded_models:
             self._load_model_on_demand(version)
         model = self.loaded_models[version]
-        prediction = model.predict(  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType, reportAttributeAccessIssue]
+        prediction = model.predict(
             [features]
         )  # because sklearn expects: 2D array; not like [5.1, 3.5, 1.4, 0.2]
-        return str(prediction)  # pyright: ignore[reportUnknownArgumentType]
+        return str(prediction)
