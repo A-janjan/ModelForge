@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from app.main import app
 from app.middleware.api_key_auth import validate_api_key
+from app.middleware.rate_limit import check_rate_limit
 
 
 @pytest.fixture(autouse=True)
@@ -21,3 +22,15 @@ def client():
     Fixture to provide a TestClient instance for testing the FastAPI app.
     """
     return TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def override_rate_limit():
+    """Override the rate limiter dependency to always pass."""
+
+    async def mock_check_rate_limit():
+        return "test-api-key"
+
+    app.dependency_overrides[check_rate_limit] = mock_check_rate_limit
+    yield
+    app.dependency_overrides.pop(check_rate_limit, None)

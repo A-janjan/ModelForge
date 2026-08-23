@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 
 from app.schemas.prediction import PredictionRequest, PredictionResponse
 from app.services.inference_service import InferenceService
-from app.middleware.api_key_auth import validate_api_key
+from app.middleware.rate_limit import check_rate_limit
 
 router: APIRouter = APIRouter()
 inference_service = InferenceService()
@@ -14,7 +14,7 @@ def health():
 
 
 @router.post("/predict", response_model=PredictionResponse)
-def predict(request: PredictionRequest, _: str = Depends(validate_api_key)):
+def predict(request: PredictionRequest, _: str = Depends(check_rate_limit)):
     prediction = inference_service.predict(
         [
             request.sepal_length,

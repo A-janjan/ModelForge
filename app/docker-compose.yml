@@ -41,6 +41,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       MODELFORGE_API_KEY: ${MODELFORGE_API_KEY:-dev-key-123}
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-5}
     ports:
       - "8000:8000"
     depends_on:

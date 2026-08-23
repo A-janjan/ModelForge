@@ -7,13 +7,13 @@ from app.schemas.model import (
     ModelResponse,
     StatusUpdateResponse,
 )
-from app.middleware.api_key_auth import validate_api_key
+from app.middleware.rate_limit import check_rate_limit
 
 import logging
 
 logging.basicConfig(level=logging.INFO)
 
-router = APIRouter(dependencies=[Depends(validate_api_key)])
+router = APIRouter(dependencies=[Depends(check_rate_limit)])
 model_repository = ModelRepository()
 
 
