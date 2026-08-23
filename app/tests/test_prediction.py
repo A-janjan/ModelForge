@@ -2,12 +2,9 @@ import os
 import time
 
 import pytest
-from fastapi.testclient import TestClient
 
 from app.main import app
 from app.repositories.model_repository import ModelRepository
-
-client = TestClient(app)
 
 
 @pytest.fixture(autouse=True)
@@ -39,13 +36,13 @@ def setup_and_teardown():
     repo.delete_model(model_id)
 
 
-def test_health():
+def test_health(client):
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
 
 
-def test_predict(setup_and_teardown):
+def test_predict(setup_and_teardown, client):
     # The fixture ensures an active model exists; we can optionally use its version.
     payload = {
         "sepal_length": 2.3,

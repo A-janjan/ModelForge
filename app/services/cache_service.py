@@ -29,7 +29,7 @@ class CacheService:
         Create a deterministic key from version and feature vector.
         """
         # Serialize features to a stable string (e.g., JSON sorted keys)
-        feature_str = json.dumps(features, sort_keys=True)
+        feature_str = json.dumps(sorted(features))
         # SHA256 hash the feature string
         hash_object = hashlib.sha256(feature_str.encode())
         payload_hash = hash_object.hexdigest()
@@ -41,7 +41,7 @@ class CacheService:
 
     def set(self, key: str, prediction: str, ttl_seconds: int = 3600) -> None:
         """Store prediction with a TTL (default 1 hour)."""
-        self.redis_client.setex(key, ttl_seconds, prediction)
+        self.redis_client.set(key, prediction, ex=ttl_seconds)
 
     def clear(self, version: str) -> None:
         """

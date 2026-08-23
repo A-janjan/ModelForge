@@ -5,12 +5,6 @@ from app.main import app
 
 
 @pytest.fixture
-def client():
-    """Return a test client instance."""
-    return TestClient(app)
-
-
-@pytest.fixture
 def default_payload():
     """Default payload for model creation."""
     return {

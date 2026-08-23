@@ -1,8 +1,4 @@
-from fastapi import (
-    APIRouter,
-    HTTPException,
-    status,
-)  # pyright: ignore[reportMissingImports]
+from fastapi import APIRouter, HTTPException, status, Depends
 
 from app.repositories.model_repository import ModelRepository
 from app.schemas.model import (
@@ -11,12 +7,13 @@ from app.schemas.model import (
     ModelResponse,
     StatusUpdateResponse,
 )
+from app.middleware.api_key_auth import validate_api_key
 
 import logging
 
 logging.basicConfig(level=logging.INFO)
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(validate_api_key)])
 model_repository = ModelRepository()
 
 

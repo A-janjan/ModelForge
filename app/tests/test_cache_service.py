@@ -96,7 +96,7 @@ def test_cache_miss(mocker):
     assert result["model_version"] == "1.0.0"
     mock_model_service.predict.assert_called_once_with("1.0.0", features)
     expected_key = cache_service.generate_cache_key("1.0.0", features)
-    mock_redis.set.assert_called_once_with(expected_key, "fresh_prediction", 3600)
+    mock_redis.set.assert_called_once_with(expected_key, "fresh_prediction", ex=3600)
 
 
 def test_cache_store(mocker):
@@ -131,7 +131,7 @@ def test_cache_store(mocker):
 
     # Assert the exact set call
     expected_key = cache_service.generate_cache_key("1.0.0", features)
-    mock_redis.set.assert_called_once_with(expected_key, "stored_value", 3600)
+    mock_redis.set.assert_called_once_with(expected_key, "stored_value", ex=3600)
 
 
 def test_cache_version_isolation(mocker):
@@ -181,7 +181,7 @@ def test_cache_version_isolation(mocker):
     result1 = inference_service.predict(features)
     assert result1["model_version"] == "1.0.0"
     key_v1 = cache_service.generate_cache_key("1.0.0", features)
-    mock_redis.set.assert_called_with(key_v1, "pred_v1", 3600)
+    mock_redis.set.assert_called_with(key_v1, "pred_v1", ex=3600)
 
     # Reset mock to capture second call
     mock_redis.reset_mock()
@@ -189,7 +189,7 @@ def test_cache_version_isolation(mocker):
     result2 = inference_service.predict(features)
     assert result2["model_version"] == "2.0.0"
     key_v2 = cache_service.generate_cache_key("2.0.0", features)
-    mock_redis.set.assert_called_with(key_v2, "pred_v2", 3600)
+    mock_redis.set.assert_called_with(key_v2, "pred_v2", ex=3600)
 
     # Verify that the keys are different
     assert key_v1 != key_v2

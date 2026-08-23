@@ -1,24 +1,20 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.schemas.prediction import PredictionRequest, PredictionResponse
 from app.services.inference_service import InferenceService
+from app.middleware.api_key_auth import validate_api_key
 
-router: APIRouter = APIRouter()  # pyright: ignore[reportUnknownVariableType]
+router: APIRouter = APIRouter()
 inference_service = InferenceService()
 
 
-@router.get("/health")  # pyright: ignore[reportUntypedFunctionDecorator, reportUnknownMemberType]
+@router.get("/health")
 def health():
     return {"status": "healthy"}
 
 
-@router.get("/model/info")  # pyright: ignore[reportUntypedFunctionDecorator, reportUnknownMemberType]
-def model_info():
-    return {"name": "iris-classifier", "version": "1.0.0"}
-
-
-@router.post("/predict", response_model=PredictionResponse)  # pyright: ignore[reportUntypedFunctionDecorator, reportUnknownMemberType]
-def predict(request: PredictionRequest):
+@router.post("/predict", response_model=PredictionResponse)
+def predict(request: PredictionRequest, _: str = Depends(validate_api_key)):
     prediction = inference_service.predict(
         [
             request.sepal_length,
