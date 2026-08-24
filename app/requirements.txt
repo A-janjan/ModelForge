@@ -12,3 +12,4 @@ python-dotenv
 redis
 prometheus-client
 python-json-logger
+uvicorn

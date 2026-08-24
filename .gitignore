@@ -7,3 +7,5 @@ __pycache__/
 app/repomix-output.xml
 
 .vscode/
+
+local-notes/

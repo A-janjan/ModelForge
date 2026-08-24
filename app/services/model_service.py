@@ -34,9 +34,11 @@ class ModelService:
 
     def load_model(self, version: str, path: str):
         self.loaded_models[version] = joblib.load(path)
+        set_active_models(len(self.loaded_models))
 
     def unload_model(self, version: str):
         del self.loaded_models[version]
+        set_active_models(len(self.loaded_models))
 
     def _load_model_on_demand(self, version: str):
         # The in-memory cache is populated at startup and can miss models

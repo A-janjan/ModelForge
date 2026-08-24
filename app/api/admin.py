@@ -8,6 +8,8 @@ from app.schemas.model import (
     StatusUpdateResponse,
 )
 from app.middleware.rate_limit import check_rate_limit
+from app.services.model_service import ModelService
+from app.services.deployment_manager import DeploymentManager
 
 import logging
 
@@ -15,6 +17,13 @@ logging.basicConfig(level=logging.INFO)
 
 router = APIRouter(dependencies=[Depends(check_rate_limit)])
 model_repository = ModelRepository()
+
+# Create a shared ModelService instance (can be reused)
+model_service = ModelService()  # This loads all active models at startup
+
+deployment_manager = DeploymentManager(
+    repository=model_repository, model_service=model_service
+)
 
 
 @router.post(
@@ -75,6 +84,23 @@ def update_model_status_by_version(version: str, status: str) -> StatusUpdateRes
     updated = model_repository.update_status_by_version(version, status)
     if not updated:
         raise HTTPException(status_code=404, detail="Model version not found")
+
+    if status.lower() == "active":
+        model_row = model_repository.get_model_by_version(version=version)
+        if model_row is None:
+            raise HTTPException(
+                status_code=404, detail="Model version not found after status update"
+            )
+
+        artifact_path = model_row[3]
+        try:
+            model_service.load_model(version=version, path=artifact_path)
+        except Exception as e:
+            raise HTTPException(500, f"failed to load model: {e}")
+    elif status.lower() in ("inactive", "archived", "failed"):
+        if version in model_service.loaded_models:
+            model_service.unload_model(version=version)
+
     return StatusUpdateResponse(status="success")
 
 
@@ -150,3 +176,34 @@ def get_model_by_version(version: str) -> ModelResponse:
         status=model[4],
         traffic_weight=model[5],
     )
+
+
+@router.post("/admin/deploy")
+def deploy(payload: ModelCreate):
+    record = deployment_manager.deploy_model(
+        name=payload.name,
+        version=payload.version,
+        artifact_path=payload.artifact_path,
+        status=payload.status,
+        traffic_weight=payload.traffic_weight,
+    )
+    return ModelResponse(
+        id=record[0],
+        name=record[1],
+        version=record[2],
+        artifact_path=record[3],
+        status=record[4],
+        traffic_weight=record[5],
+    )
+
+
+@router.post("/admin/promote/{version}")
+def promote(version: str):
+    deployment_manager.promote(version)
+    StatusUpdateResponse(status="success")
+
+
+@router.post("/admin/drain/{version}")
+def drain(version: str):
+    deployment_manager.drain(version)
+    StatusUpdateResponse(status="success")

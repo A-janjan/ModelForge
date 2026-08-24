@@ -23,4 +23,4 @@ async def metrics():
     """
     Endpoint to expose Prometheus metrics.
     """
-    return Response(content=get_metrics(), media_type="text/plains")
+    return Response(content=get_metrics(), media_type="text/plain")
