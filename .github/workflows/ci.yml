@@ -98,6 +98,9 @@ jobs:
     needs: test
     # Only run on push to main (not on PRs) to avoid pushing on every PR
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    permissions:
+        packages: write
+        contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
