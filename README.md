@@ -1,5 +1,7 @@
 # ModelForge
 
+[![CI/CD Pipeline](https://github.com/A-janjan/ModelForge/actions/workflows/ci.yml/badge.svg)](https://github.com/A-janjan/ModelForge/actions/workflows/ci.yml)
+
 **A learning-focused ML model serving gateway built with FastAPI.**
 
 ModelForge is a backend project for exploring the core concepts behind an ML model serving platform, including **model versioning, traffic routing, multi-version serving, inference orchestration, and model deployment management**.
@@ -138,6 +140,24 @@ Then open the API documentation:
 ```text
 http://localhost:8000/docs
 ```
+
+## Using the Makefile
+
+Common development tasks are available through the Makefile in the `app/` directory:
+
+```bash
+cd app
+make help          # List all available commands
+```
+
+| Command | Description |
+| --- | --- |
+| `make install` | Install Python dependencies |
+| `make lint` | Run the ruff linter |
+| `make test` | Run pytest with coverage |
+| `make docker-build` | Build the Docker image |
+| `make docker-up` | Start services with docker-compose |
+| `make docker-down` | Stop services |
 
 For a deeper explanation of the codebase and the development journey, see the **[GitHub Wiki](../../wiki)**.
 
