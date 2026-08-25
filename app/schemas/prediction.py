@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+
 class PredictionRequest(BaseModel):
     sepal_length: float
     sepal_width: float

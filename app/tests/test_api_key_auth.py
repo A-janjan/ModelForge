@@ -1,8 +1,8 @@
-import os
+from unittest.mock import patch
+
 import pytest
 from app.main import app
 from app.middleware import api_key_auth
-from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 

@@ -1,5 +1,6 @@
-from prometheus_client import Counter, Histogram, Gauge, generate_latest, REGISTRY
 import time
+
+from prometheus_client import REGISTRY, Counter, Gauge, Histogram, generate_latest
 
 # Metrics definitions
 REQUEST_COUNT = Counter(

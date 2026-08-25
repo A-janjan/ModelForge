@@ -1,8 +1,9 @@
+import contextvars
 import uuid
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.types import ASGIApp
-import contextvars
 
 CORRELATION_ID_HEADER = "X-Correlation-ID"
 

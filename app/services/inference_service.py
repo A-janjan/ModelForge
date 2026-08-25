@@ -1,9 +1,10 @@
+import logging
+
 from app.repositories.model_repository import ModelRepository
-from app.services.model_service import ModelService
-from app.services.traffic_router import TrafficRouter
 from app.services.cache_service import CacheService
 from app.services.metrics_service import cache_hit, cache_miss
-import logging
+from app.services.model_service import ModelService
+from app.services.traffic_router import TrafficRouter
 
 logger = logging.getLogger(__name__)
 

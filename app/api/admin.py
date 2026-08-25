@@ -1,17 +1,16 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+import logging
 
+from app.middleware.rate_limit import check_rate_limit
 from app.repositories.model_repository import ModelRepository
 from app.schemas.model import (
     ModelCreate,
-    UpdateWeightRequest,
     ModelResponse,
     StatusUpdateResponse,
+    UpdateWeightRequest,
 )
-from app.middleware.rate_limit import check_rate_limit
-from app.services.model_service import ModelService
 from app.services.deployment_manager import DeploymentManager
-
-import logging
+from app.services.model_service import ModelService
+from fastapi import APIRouter, Depends, HTTPException, status
 
 logging.basicConfig(level=logging.INFO)
 
@@ -95,7 +94,7 @@ def update_model_status_by_version(version: str, status: str) -> StatusUpdateRes
         artifact_path = model_row[3]
         try:
             model_service.load_model(version=version, path=artifact_path)
-        except Exception as e:
+        except (FileNotFoundError, OSError) as e:
             raise HTTPException(500, f"failed to load model: {e}")
     elif status.lower() in ("inactive", "archived", "failed"):
         if version in model_service.loaded_models:
@@ -157,7 +156,6 @@ def delete_model(model_id: int) -> None:
     deleted = model_repository.delete_model(model_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Model not found")
-    return None
 
 
 @router.get("/admin/models/version/{version}", response_model=ModelResponse)

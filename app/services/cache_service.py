@@ -2,8 +2,9 @@
 
 import hashlib
 import json
-import redis
 import os
+
+import redis
 from dotenv import load_dotenv
 
 _ = load_dotenv()  # Load environment variables from .env file
@@ -13,8 +14,8 @@ class CacheService:
     def __init__(self, redis_client=None):
         if redis_client is None:
             redis_host = os.getenv("REDIS_HOST", "localhost")
-            redis_port = int(os.getenv("REDIS_PORT", 6379))
-            redis_db = int(os.getenv("REDIS_DB", 0))
+            redis_port = int(os.getenv("REDIS_PORT", "6379"))
+            redis_db = int(os.getenv("REDIS_DB", "0"))
             self.redis_client = redis.Redis(
                 host=redis_host,
                 port=redis_port,
@@ -48,4 +49,3 @@ class CacheService:
         (Optional) Invalidate all cache entries for a specific version.
         Requires scanning keys - can be implemented later.
         """
-        pass

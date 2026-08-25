@@ -1,5 +1,5 @@
-import pytest
 from unittest.mock import Mock, patch
+
 from app.main import app
 from app.middleware.rate_limit import RateLimiter, check_rate_limit
 from fastapi import HTTPException, status

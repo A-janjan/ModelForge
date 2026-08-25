@@ -1,7 +1,8 @@
 import logging
 import sys
-from pythonjsonlogger.json import JsonFormatter
+
 from app.middleware.correlation_id import correlation_id_var
+from pythonjsonlogger.json import JsonFormatter
 
 
 def setup_logging():

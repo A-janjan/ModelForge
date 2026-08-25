@@ -1,5 +1,6 @@
 # Responsibility: Validate API keys.
 import os
+
 from fastapi import HTTPException, Security, status
 from fastapi.security import APIKeyHeader
 

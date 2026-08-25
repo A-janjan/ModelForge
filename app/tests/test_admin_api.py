@@ -1,7 +1,4 @@
 import pytest  # pyright: ignore[reportMissingImports]
-from fastapi.testclient import TestClient  # pyright: ignore[reportMissingImports]
-
-from app.main import app
 
 
 @pytest.fixture

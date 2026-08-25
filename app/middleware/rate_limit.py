@@ -1,7 +1,9 @@
 import os
+from typing import Annotated
+
 import redis
-from fastapi import Request, Depends, HTTPException, status
 from app.middleware.api_key_auth import validate_api_key
+from fastapi import Depends, HTTPException, Request, status
 
 
 class RateLimiter:
@@ -12,8 +14,8 @@ class RateLimiter:
     def __init__(self, redis_client=None):
         if redis_client is None:
             redis_host = os.getenv("REDIS_HOST", "localhost")
-            redis_port = int(os.getenv("REDIS_PORT", 6379))
-            redis_db = int(os.getenv("REDIS_DB", 0))
+            redis_port = int(os.getenv("REDIS_PORT", "6379"))
+            redis_db = int(os.getenv("REDIS_DB", "0"))
             self.redis_client = redis.Redis(
                 host=redis_host,
                 port=redis_port,
@@ -24,7 +26,7 @@ class RateLimiter:
             self.redis_client = redis_client
 
         self.limit = int(
-            os.getenv("RATE_LIMIT_PER_MINUTE", 5)
+            os.getenv("RATE_LIMIT_PER_MINUTE", "5")
         )  # Default to 100 requests
         self.window_seconds = 60  # 1 minute window
 
@@ -53,8 +55,8 @@ def get_rate_limiter() -> RateLimiter:
 
 async def check_rate_limit(
     request: Request,
-    api_key: str = Depends(validate_api_key),
-    limit: RateLimiter = Depends(get_rate_limiter),
+    api_key: Annotated[str, Depends(validate_api_key)],
+    limit: Annotated[RateLimiter, Depends(get_rate_limiter)],
 ) -> str:
     """
     FastAPI dependency that checks the rate limit and raises HTTP 429 if exceeded.

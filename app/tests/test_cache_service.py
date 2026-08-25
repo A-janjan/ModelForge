@@ -1,5 +1,5 @@
-import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
+
 from app.services.cache_service import CacheService
 from app.services.inference_service import InferenceService
 

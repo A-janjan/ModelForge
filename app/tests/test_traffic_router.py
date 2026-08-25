@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 import pytest  # pyright: ignore[reportMissingImports]
-
 from app.services.traffic_router import TrafficRouter
 
 

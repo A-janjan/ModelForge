@@ -1,4 +1,5 @@
 import logging
+
 from app.repositories.model_repository import ModelRepository
 from app.services.model_service import ModelService
 
@@ -58,7 +59,7 @@ class DeploymentManager:
         artifact_path = target_record[3]
         try:
             self.model_service.load_model(target_version, artifact_path)
-        except Exception as e:
+        except (OSError, ValueError, ImportError) as e:
             logger.error(
                 f"failed to load target version {target_version} during rollback: {e}"
             )
@@ -70,8 +71,8 @@ class DeploymentManager:
             if v != target_version and not any(v == row[2] for row in active_models):
                 try:
                     self.model_service.unload_model(v)
-                except Exception as e:
-                    logger.warning("failed to unload version {v}: {e}")
+                except KeyError as e:
+                    logger.warning(f"failed to unload version {v}: {e}")
         return True
 
     def promote(self, version: str):

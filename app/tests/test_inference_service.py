@@ -1,7 +1,5 @@
 from unittest.mock import Mock
 
-import pytest  # pyright: ignore[reportMissingImports]
-
 from app.services.inference_service import InferenceService
 
 # Constants to represent a model row from the repository.

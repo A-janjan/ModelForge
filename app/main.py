@@ -2,10 +2,10 @@ from fastapi import FastAPI, Response
 
 from app.api.admin import router as admin_router
 from app.api.prediction import router
-from app.middleware.metrics_middleware import MetricssMiddleware
 from app.middleware.correlation_id import CorrelationIdMiddleware
-from app.services.metrics_service import get_metrics
+from app.middleware.metrics_middleware import MetricssMiddleware
 from app.services.logging_service import setup_logging
+from app.services.metrics_service import get_metrics
 
 _ = setup_logging()
 
