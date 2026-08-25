@@ -4,6 +4,7 @@ scikit-learn
 numpy
 joblib
 pytest
+pytest-mock
 httpx
 sqlalchemy
 psycopg2-binary
