@@ -1,5 +1,7 @@
 import logging
 
+from fastapi import APIRouter, Depends, HTTPException, status
+
 from app.middleware.rate_limit import check_rate_limit
 from app.repositories.model_repository import ModelRepository
 from app.schemas.model import (
@@ -10,7 +12,6 @@ from app.schemas.model import (
 )
 from app.services.deployment_manager import DeploymentManager
 from app.services.model_service import ModelService
-from fastapi import APIRouter, Depends, HTTPException, status
 
 logging.basicConfig(level=logging.INFO)
 

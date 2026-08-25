@@ -1,7 +1,8 @@
+from fastapi import APIRouter, Depends
+
 from app.middleware.rate_limit import check_rate_limit
 from app.schemas.prediction import PredictionRequest, PredictionResponse
 from app.services.inference_service import InferenceService
-from fastapi import APIRouter, Depends
 
 router: APIRouter = APIRouter()
 inference_service = InferenceService()

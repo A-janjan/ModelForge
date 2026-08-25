@@ -1,9 +1,10 @@
 import time
 
-from app.services.metrics_service import ERROR_COUNT, REQUEST_COUNT, REQUEST_LATENCY
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
+
+from app.services.metrics_service import ERROR_COUNT, REQUEST_COUNT, REQUEST_LATENCY
 
 
 class MetricssMiddleware(BaseHTTPMiddleware):
