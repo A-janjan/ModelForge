@@ -9,3 +9,9 @@ app/repomix-output.xml
 .vscode/
 
 local-notes/
+
+.conda/
+.pytest_cache/
+.ruff_cache/
+
+app/k8s/secret.yml

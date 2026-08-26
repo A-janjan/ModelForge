@@ -1,13 +1,17 @@
 # Responsibility: Validate API keys.
 import os
 
+from dotenv import load_dotenv
 from fastapi import HTTPException, Security, status
 from fastapi.security import APIKeyHeader
+
+# Load environment variables from .env file (does not override real env vars)
+_ = load_dotenv()
 
 # Define the header name
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
-# Read the valid key from environment (or use a default for development)
+# Read the valid key from environment/.env (or use a default for development)
 VALID_API_KEY = os.getenv("MODELFORGE_API_KEY", "dev-api-key-123")
 
 
