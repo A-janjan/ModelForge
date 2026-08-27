@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, BackgroundTasks  # type: ignore
 
 from app.middleware.rate_limit import check_rate_limit
 from app.schemas.prediction import PredictionRequest, PredictionResponse
 from app.services.inference_service import InferenceService
+from app.services.drift_detector import get_drift_detector
 
 router: APIRouter = APIRouter()
 inference_service = InferenceService()
@@ -14,14 +15,22 @@ def health():
 
 
 @router.post("/predict", response_model=PredictionResponse)
-def predict(request: PredictionRequest, _: str = Depends(check_rate_limit)):
-    prediction = inference_service.predict(
-        [
-            request.sepal_length,
-            request.sepal_width,
-            request.petal_length,
-            request.petal_width,
-        ]
+def predict(
+    request: PredictionRequest,
+    background_tasks: BackgroundTasks,
+    _: str = Depends(check_rate_limit),
+):
+    features = [
+        request.sepal_length,
+        request.sepal_width,
+        request.petal_length,
+        request.petal_width,
+    ]
+    prediction = inference_service.predict(features)
+
+    version = prediction["model_version"]
+    background_tasks.add_task(
+        get_drift_detector().collect_sample, version=version, features=features
     )
 
     return PredictionResponse(

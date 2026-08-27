@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status  # type: ignore
 
 from app.middleware.rate_limit import check_rate_limit
 from app.repositories.model_repository import ModelRepository
@@ -12,6 +12,10 @@ from app.schemas.model import (
 )
 from app.services.deployment_manager import DeploymentManager
 from app.services.model_service import ModelService
+from app.services.drift_detector import get_drift_detector
+from pydantic import BaseModel  # type: ignore
+from typing import List
+from app.services.metrics_service import set_drift_score
 
 logging.basicConfig(level=logging.INFO)
 
@@ -24,6 +28,10 @@ model_service = ModelService()  # This loads all active models at startup
 deployment_manager = DeploymentManager(
     repository=model_repository, model_service=model_service
 )
+
+
+class FeatureSampleRequest(BaseModel):
+    features: List[List[float]]
 
 
 @router.post(
@@ -206,3 +214,26 @@ def promote(version: str):
 def drain(version: str):
     deployment_manager.drain(version)
     StatusUpdateResponse(status="success")
+
+
+@router.post("/admin/models/{version}/baseline")
+def set_baseline(version: str, payload: FeatureSampleRequest):
+    """
+    Compute and store baseline statistics for a model version from provided samples.
+    """
+    detector = get_drift_detector()
+    stats = detector.compute_baseline(version, payload.features)
+    return {"status": "success", "stats": stats}
+
+
+@router.get("/admin/models/{version}/drift")
+def get_drift(version: str):
+    """
+    Return drift status for a model version.
+    """
+    detector = get_drift_detector()
+    status = detector.get_drift_status(version)
+    # Also update Prometheus gauge
+    if "average_psi" in status:
+        set_drift_score(version, status["average_psi"])
+    return status

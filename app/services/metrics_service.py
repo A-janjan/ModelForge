@@ -26,6 +26,11 @@ CACHE_MISS = Counter("cache_misses_total", "Number of cache misses", ["model_ver
 ACTIVE_MODELS = Gauge("active_models_count", "Number of active models currently loaded")
 
 
+DRIFT_SCORE = Gauge(
+    "model_drift_score", "Average PSI drift score per model version", ["model_version"]
+)
+
+
 def track_latency(method: str, endpoint: str):
     """
     Context manager to measure latency.
@@ -57,6 +62,10 @@ def cache_miss(version: str):
 
 def set_active_models(count: int):
     ACTIVE_MODELS.set(count)
+
+
+def set_drift_score(version: str, score: float):
+    DRIFT_SCORE.labels(model_version=version).set(score)
 
 
 def get_metrics():
