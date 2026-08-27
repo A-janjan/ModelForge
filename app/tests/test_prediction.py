@@ -2,7 +2,6 @@ import os
 import time
 
 import pytest
-
 from app.repositories.model_repository import ModelRepository
 
 

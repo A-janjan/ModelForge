@@ -1,9 +1,8 @@
 import pytest
-from fastapi.testclient import TestClient
-
 from app.main import app
 from app.middleware.api_key_auth import validate_api_key
 from app.middleware.rate_limit import check_rate_limit
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture(autouse=True)

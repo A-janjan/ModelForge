@@ -2,7 +2,6 @@ import os
 import time
 
 import pytest  # pyright: ignore[reportMissingImports]
-
 from app.repositories.model_repository import ModelRepository
 from app.services.model_service import ModelService
 

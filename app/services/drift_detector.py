@@ -1,9 +1,9 @@
-import numpy as np  # type: ignore
 import json
+import logging
 import os
 from collections import defaultdict
-from typing import Dict, List, Optional
-import logging
+
+import numpy as np  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -18,12 +18,12 @@ class DriftDetector:
         self.baseline_dir = baseline_dir
         os.makedirs(baseline_dir, exist_ok=True)
         # In-memory cache of baselines: {version: {"mean": [...], "std": [...], "hist": [...]}}
-        self.baselines: Dict[str, Dict] = {}
+        self.baselines: dict[str, dict] = {}
         # Store recent samples for each version (optional)
-        self.recent_samples: Dict[str, List[List[float]]] = defaultdict(list)
+        self.recent_samples: dict[str, list[list[float]]] = defaultdict(list)
         self.max_samples = 1000
 
-    def load_baseline(self, version: str) -> Optional[Dict]:
+    def load_baseline(self, version: str) -> dict | None:
         """Load baseline statistics from disk."""
         path = os.path.join(self.baseline_dir, f"{version}.json")
         if os.path.exists(path):
@@ -31,14 +31,14 @@ class DriftDetector:
                 return json.load(f)
         return None
 
-    def save_baseline(self, version: str, stats: Dict):
+    def save_baseline(self, version: str, stats: dict):
         """Store baseline stats to disk."""
         path = os.path.join(self.baseline_dir, f"{version}.json")
         with open(path, "w") as f:
             json.dump(stats, f)
         self.baselines[version] = stats
 
-    def compute_baseline(self, version: str, features: List[List[float]]):
+    def compute_baseline(self, version: str, features: list[list[float]]):
         """
         Compute baseline statistics from a set of feature vectors (e.g., training data).
         Stores: mean, std, min, max, and histograms (bins) for each feature.
@@ -71,7 +71,7 @@ class DriftDetector:
         logger.info(f"Baseline computed for version {version}")
         return stats
 
-    def get_baseline(self, version: str) -> Optional[Dict]:
+    def get_baseline(self, version: str) -> dict | None:
         """Retrieve baseline, loading from disk if needed."""
         if version not in self.baselines:
             stats = self.load_baseline(version)
@@ -79,13 +79,13 @@ class DriftDetector:
                 self.baselines[version] = stats
         return self.baselines.get(version)
 
-    def collect_sample(self, version: str, features: List[float]):
+    def collect_sample(self, version: str, features: list[float]):
         """Store a sample for drift monitoring (optional, for online detection)."""
         self.recent_samples[version].append(features)
         if len(self.recent_samples[version]) > self.max_samples:
             self.recent_samples[version].pop(0)
 
-    def compute_psi(self, expected_hist: List[int], observed_hist: List[int]) -> float:
+    def compute_psi(self, expected_hist: list[int], observed_hist: list[int]) -> float:
         """
         Compute Population Stability Index between two histograms.
         Both lists must have same length.
@@ -101,7 +101,7 @@ class DriftDetector:
         psi = np.sum((observed - expected) * np.log(observed / expected))
         return float(psi)
 
-    def detect_drift(self, version: str, sample_features: List[List[float]]) -> Dict:
+    def detect_drift(self, version: str, sample_features: list[list[float]]) -> dict:
         """
         Compute drift score for a batch of samples compared to baseline.
         Returns a dict with PSI per feature and overall drift flag.
@@ -143,7 +143,7 @@ class DriftDetector:
             "threshold": threshold,
         }
 
-    def get_drift_status(self, version: str) -> Dict:
+    def get_drift_status(self, version: str) -> dict:
         """Return drift status using recent samples."""
         samples = self.recent_samples.get(version, [])
         if len(samples) < 50:  # need enough samples

@@ -1,7 +1,6 @@
 import logging
 
 import joblib
-
 from app.repositories.model_repository import ModelRepository
 from app.services.metrics_service import set_active_models
 
