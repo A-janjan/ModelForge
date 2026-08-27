@@ -2,8 +2,9 @@ import os
 from typing import Annotated
 
 import redis
-from app.middleware.api_key_auth import validate_api_key
 from fastapi import Depends, HTTPException, Request, status
+
+from app.middleware.api_key_auth import validate_api_key
 
 
 class RateLimiter:

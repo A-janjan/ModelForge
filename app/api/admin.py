@@ -1,5 +1,8 @@
 import logging
 
+from fastapi import APIRouter, Depends, HTTPException, status  # type: ignore
+from pydantic import BaseModel  # type: ignore
+
 from app.middleware.rate_limit import check_rate_limit
 from app.repositories.model_repository import ModelRepository
 from app.schemas.model import (
@@ -12,8 +15,6 @@ from app.services.deployment_manager import DeploymentManager
 from app.services.drift_detector import get_drift_detector
 from app.services.metrics_service import set_drift_score
 from app.services.model_service import ModelService
-from fastapi import APIRouter, Depends, HTTPException, status  # type: ignore
-from pydantic import BaseModel  # type: ignore
 
 logging.basicConfig(level=logging.INFO)
 

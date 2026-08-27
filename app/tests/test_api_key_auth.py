@@ -1,9 +1,10 @@
 from unittest.mock import patch
 
 import pytest
+from fastapi.testclient import TestClient
+
 from app.main import app
 from app.middleware import api_key_auth
-from fastapi.testclient import TestClient
 
 
 @pytest.fixture

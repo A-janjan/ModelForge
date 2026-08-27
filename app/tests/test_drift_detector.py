@@ -1,5 +1,6 @@
 import numpy as np  # type: ignore
 import pytest  # type: ignore
+
 from app.services.drift_detector import DriftDetector
 
 

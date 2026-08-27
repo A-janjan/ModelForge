@@ -1,8 +1,9 @@
+from fastapi import APIRouter, BackgroundTasks, Depends  # type: ignore
+
 from app.middleware.rate_limit import check_rate_limit
 from app.schemas.prediction import PredictionRequest, PredictionResponse
 from app.services.drift_detector import get_drift_detector
 from app.services.inference_service import InferenceService
-from fastapi import APIRouter, BackgroundTasks, Depends  # type: ignore
 
 router: APIRouter = APIRouter()
 inference_service = InferenceService()
